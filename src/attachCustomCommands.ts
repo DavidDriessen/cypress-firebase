@@ -1,4 +1,8 @@
 import type { firestore } from 'firebase-admin';
+import {
+  deserializeSpecialTypes,
+  serializeSpecialTypes,
+} from './firebase-utils';
 
 /**
  * Params for attachCustomCommand function for
@@ -482,7 +486,7 @@ export default function attachCustomCommands(
             dataToWrite.createdAt = firebase.firestore.Timestamp.now();
           }
         }
-        taskSettings.data = dataToWrite;
+        taskSettings.data = serializeSpecialTypes(dataToWrite);
       }
       // Use third argument as options for get and delete actions
       if (action === 'get' || action === 'delete') {
@@ -491,7 +495,9 @@ export default function attachCustomCommands(
         // Attach options if they exist
         taskSettings.options = options;
       }
-      return cy.task('callFirestore', taskSettings);
+      return cy
+        .task('callFirestore', taskSettings)
+        .then((data: any) => deserializeSpecialTypes(data));
     },
   );
 

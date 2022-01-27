@@ -10,6 +10,8 @@ import {
   slashPathToFirestoreRef,
   deleteCollection,
   isDocPath,
+  serializeSpecialTypes,
+  deserializeSpecialTypes,
 } from './firebase-utils';
 
 /**
@@ -225,13 +227,17 @@ export async function callFirestore(
 
       if (snap?.docs?.length && typeof snap.docs.map === 'function') {
         return snap.docs.map((docSnap: FirebaseFirestore.DocumentSnapshot) => ({
-          ...docSnap.data(),
+          ...serializeSpecialTypes(docSnap.data()),
           id: docSnap.id,
         }));
       }
       // Falling back to null in the case of falsey value prevents Cypress error with message:
       // "You must return a promise, a value, or null to indicate that the task was handled."
-      return (typeof snap?.data === 'function' && snap.data()) || null;
+      return (
+        (typeof snap?.data === 'function' &&
+          serializeSpecialTypes(snap.data())) ||
+        null
+      );
     }
 
     if (action === 'delete') {
@@ -256,7 +262,7 @@ export async function callFirestore(
             options,
           );
       await deletePromise;
-      // Returning null in the case of falsey value prevents Cypress error with message:
+      // Returning null in the case of falsely value prevents Cypress error with message:
       // "You must return a promise, a value, or null to indicate that the task was handled."
       return null;
     }
@@ -264,6 +270,9 @@ export async function callFirestore(
     if (!data) {
       throw new Error(`You must define data to run ${action} in firestore.`);
     }
+
+    // eslint-disable-next-line no-param-reassign
+    data = deserializeSpecialTypes(data);
 
     const dataToSet = getDataWithTimestampsAndGeoPoints(
       data,

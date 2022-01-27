@@ -123,14 +123,14 @@
       "name": "ESM: attachCustomCommands",
       "path": "lib-esm/index.js",
       "import": "{ attachCustomCommands }",
-      "limit": "1kb",
+      "limit": "1.3kb",
       "webpack": false
     },
     {
       "name": "ESM: plugin",
       "path": "lib-esm/index.js",
       "import": "{ plugin }",
-      "limit": "2.75kb",
+      "limit": "3kb",
       "webpack": false
     }
   ]

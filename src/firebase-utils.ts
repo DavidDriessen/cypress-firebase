@@ -1,6 +1,7 @@
-import type { AppOptions, app, firestore, credential } from 'firebase-admin';
+import type { AppOptions, app, credential } from 'firebase-admin';
+import { firestore } from 'firebase-admin';
 import { getServiceAccount } from './node-utils';
-import { CallFirestoreOptions } from './attachCustomCommands';
+import { CallFirestoreOptions, FixtureData } from './attachCustomCommands';
 
 /**
  * Check whether a value is a string or not
@@ -299,4 +300,93 @@ export function deleteCollection(
   return new Promise((resolve, reject) => {
     deleteQueryBatch(db, baseQuery, resolve, reject);
   });
+}
+
+/**
+ * @param data - Firestore data
+ * @returns data
+ */
+export function serializeSpecialTypes(data: any): any {
+  const tempData: any = {};
+  switch (data?.constructor.name) {
+    case 'Timestamp':
+      return {
+        __datatype__: 'Timestamp',
+        value: {
+          _seconds: data.seconds,
+          _nanoseconds: data.nanoseconds,
+        },
+      };
+    case 'GeoPoint':
+      return {
+        __datatype__: 'GeoPoint',
+        value: {
+          _latitude: data.latitude,
+          _longitude: data.longitude,
+        },
+      };
+    case 'DocumentReference':
+      return {
+        __datatype__: 'DocumentReference',
+        value: data.path,
+      };
+    case 'Object':
+      Object.keys(data).forEach(
+        // eslint-disable-next-line no-return-assign
+        (key) => (tempData[key] = serializeSpecialTypes(data[key])),
+      );
+      return tempData;
+    case 'Array':
+      return data.map((val: any) => serializeSpecialTypes(val));
+    case 'Number':
+      return Number.isFinite(data) ? data : null;
+    default:
+      return data;
+  }
+}
+
+/**
+ * @param data - Firestore data
+ * @returns data
+ */
+export function deserializeSpecialTypes(data?: FixtureData): FixtureData {
+  const tempData: any = {};
+  const isScalar = (val: any) =>
+    typeof val === 'undefined' ||
+    typeof val === 'string' ||
+    val instanceof String ||
+    (typeof val === 'number' && Number.isFinite(val)) ||
+    val === null ||
+    typeof val === 'boolean';
+  if (isScalar(data)) {
+    return data as FixtureData;
+  }
+  if (Array.isArray(data)) {
+    return data.map((val: any) => deserializeSpecialTypes(val));
+  }
+  // eslint-disable-next-line no-underscore-dangle
+  switch (data?.__datatype__) {
+    case 'Timestamp':
+      return new firestore.Timestamp(
+        // eslint-disable-next-line no-underscore-dangle
+        data.value._seconds,
+        // eslint-disable-next-line no-underscore-dangle
+        data.value._nanoseconds,
+      );
+    case 'GeoPoint':
+      return new firestore.GeoPoint(
+        // eslint-disable-next-line no-underscore-dangle
+        data.value._latitude,
+        // eslint-disable-next-line no-underscore-dangle
+        data.value._longitude,
+      );
+    case 'DocumentReference':
+      return firestore().doc(data.value);
+    default:
+      Object.keys(data as any).forEach(
+        // eslint-disable-next-line no-return-assign
+        (key) => (tempData[key] = deserializeSpecialTypes((data as any)[key])),
+      );
+      return tempData;
+  }
 }
