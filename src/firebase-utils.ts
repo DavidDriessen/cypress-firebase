@@ -1,5 +1,4 @@
-import type { AppOptions, app, credential } from 'firebase-admin';
-import { firestore } from 'firebase-admin';
+import type { AppOptions, app, firestore, credential } from 'firebase-admin';
 import { getServiceAccount } from './node-utils';
 import { CallFirestoreOptions, FixtureData } from './attachCustomCommands';
 
@@ -346,10 +345,14 @@ export function serializeSpecialTypes(data: any): any {
 }
 
 /**
+ * @param adminInstance - firebase-admin instance to initialize
  * @param data - Firestore data
  * @returns data
  */
-export function deserializeSpecialTypes(data?: FixtureData): FixtureData {
+export function deserializeSpecialTypes(
+  adminInstance: any,
+  data?: FixtureData,
+): FixtureData {
   const tempData: any = {};
   const isScalar = (val: any) =>
     typeof val === 'undefined' ||
@@ -367,21 +370,21 @@ export function deserializeSpecialTypes(data?: FixtureData): FixtureData {
   // eslint-disable-next-line no-underscore-dangle
   switch (data?.__datatype__) {
     case 'Timestamp':
-      return new firestore.Timestamp(
+      return new adminInstance.firestore.Timestamp(
         // eslint-disable-next-line no-underscore-dangle
         data.value._seconds,
         // eslint-disable-next-line no-underscore-dangle
         data.value._nanoseconds,
       );
     case 'GeoPoint':
-      return new firestore.GeoPoint(
+      return new adminInstance.firestore.GeoPoint(
         // eslint-disable-next-line no-underscore-dangle
         data.value._latitude,
         // eslint-disable-next-line no-underscore-dangle
         data.value._longitude,
       );
     case 'DocumentReference':
-      return firestore().doc(data.value);
+      return adminInstance.firestore().doc(data.value);
     default:
       Object.keys(data as any).forEach(
         // eslint-disable-next-line no-return-assign

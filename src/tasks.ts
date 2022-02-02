@@ -272,7 +272,7 @@ export async function callFirestore(
     }
 
     // eslint-disable-next-line no-param-reassign
-    data = deserializeSpecialTypes(data);
+    data = deserializeSpecialTypes(adminInstance, data);
 
     const dataToSet = getDataWithTimestampsAndGeoPoints(
       data,
